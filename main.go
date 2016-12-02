@@ -33,7 +33,7 @@ const housecat = `
   <body>
     <h2>Yes, It's Caturday!</h2>
     <p>
-    <img class="" src="http://thecatapi.com/api/images/get?format=src&type=gif" alt="Lovely kitten"></p>
+    <img class="" src="//thecatapi.com/api/images/get?format=src&type=gif" alt="Lovely kitten"></p>
     <table>
       <tr>
         <td><strong>Hostname</strong></td>
