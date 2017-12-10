@@ -1,7 +1,0 @@
-FROM golang:1.7-alpine
-
-ADD . /go/src/github.com/fntlnz/caturday
-
-WORKDIR /go/src/github.com/fntlnz/caturday
-
-RUN go build -a -tags netgo -ldflags '-w' .

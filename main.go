@@ -31,7 +31,8 @@ const housecat = `
     <title>Yes, It's Caturday</title>
   </head>
   <body>
-    <h2>Yes, It's Caturday!</h2>
+		<h2>Yes, It's Caturday!</h2>
+		<p><strong>HINT:</strong> It's almost ALWAYS caturday.</p>
     <p>
     <img class="" src="//thecatapi.com/api/images/get?format=src&type=gif" alt="Lovely kitten"></p>
     <table>
@@ -80,6 +81,7 @@ const housecat = `
 			{{ end }}
 			</table>
 		</div>
+		<p>Meeeeow :3 - you can use this in your tests too, see: <a href="https://github.com/fntlnz/caturday">https://github.com/fntlnz/caturday</a></p>
   </body>
 </html>
 `

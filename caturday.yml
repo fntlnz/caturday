@@ -1,0 +1,67 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: caturday
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: caturday
+  namespace: caturday
+  labels:
+    app: caturday
+spec:
+  selector:
+    app: caturday
+  ports:
+    - name: caturday
+      port: 8080
+      protocol: TCP
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: 'true'
+  name: caturday
+  namespace: caturday
+spec:
+  rules:
+    - host: kittens.local
+      http:
+        paths:
+          - backend:
+              serviceName: caturday
+              servicePort: 8080
+            path: /
+  tls:
+    - hosts:
+        - "kittens.local"
+      secretName: caturday
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: caturday
+  namespace: caturday
+  labels:
+    app: catrday
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: caturday
+  template:
+    metadata:
+      labels:
+        app: caturday
+    spec:
+      containers:
+      - name: caturday
+        image: docker.io/fntlnz/caturday:latest
+        resources:
+          limits:
+            cpu: 0.1
+            memory: 100M
