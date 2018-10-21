@@ -11,7 +11,7 @@ import (
 
 type HostData struct {
 	Hostname   string
-	Count      int
+	Count      int64
 	Interfaces []net.Interface
 	Addresses  map[string]string
 }
@@ -90,7 +90,7 @@ const housecat = `
 
 var (
 	hostData HostData
-	healthy int32
+	healthy  int32
 )
 
 func ips() map[string]string {
@@ -115,7 +115,7 @@ func ips() map[string]string {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	hostData.Count = hostData.Count + 1
+	atomic.AddInt64(&hostData.Count, 1)
 
 	reqData := RequestData{RemoteAddr: r.RemoteAddr}
 	t := template.New("kittens")
