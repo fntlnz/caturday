@@ -1,0 +1,89 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    app: caturday
+  name: caturday
+spec:
+  dockerImageRepository: docker.io/fntlnz/caturday
+  tags:
+  - name: latest
+    from:
+      kind: DockerImage
+      name: docker.io/fntlnz/caturday
+    referencePolicy:
+      type: Local
+---
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  labels:
+    app: caturday
+  name: caturday
+spec:
+  replicas: 1
+  selector:
+    app: caturday
+    deploymentconfig: caturday
+  strategy:
+    type: Rolling
+  template:
+    metadata:
+      labels:
+        app: caturday
+        deploymentconfig: caturday
+    spec:
+      containers:
+        - image: caturday
+          imagePullPolicy: Always
+          name: caturday
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+  triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+          - caturday
+        from:
+          kind: ImageStreamTag
+          name: 'caturday:latest'
+      type: ImageChange
+    - type: ConfigChange
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: caturday
+spec:
+  selector:
+    app: caturday
+  ports:
+  - name: 80-tcp
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    kubernetes.io/tls-acme: 'true'
+  labels:
+    app: caturday
+  name: caturday
+spec:
+  port:
+    targetPort: 80-tcp
+  to:
+    kind: Service
+    name: caturday
+  wildcardPolicy: None
+  tls:
+    termination: edge

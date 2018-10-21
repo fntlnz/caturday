@@ -2,9 +2,11 @@ package main
 
 import (
 	"html/template"
+	"log"
 	"net"
 	"net/http"
 	"os"
+	"sync/atomic"
 )
 
 type HostData struct {
@@ -34,7 +36,7 @@ const housecat = `
 		<h2>Yes, It's Caturday!</h2>
 		<p><strong>HINT:</strong> It's almost ALWAYS caturday.</p>
     <p>
-    <img class="" src="//thecatapi.com/api/images/get?format=src&type=gif" alt="Lovely kitten"></p>
+    <img class="" src="//thecatapi.com/api/images/get?format=src&amp;type=gif" alt="Lovely kitten"></p>
     <table>
       <tr>
         <td><strong>Hostname</strong></td>
@@ -86,7 +88,10 @@ const housecat = `
 </html>
 `
 
-var hostData HostData
+var (
+	hostData HostData
+	healthy int32
+)
 
 func ips() map[string]string {
 	ips := map[string]string{}
@@ -118,11 +123,33 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, TemplateData{H: hostData, R: reqData})
 }
 
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	if atomic.LoadInt32(&healthy) == 1 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	w.WriteHeader(http.StatusServiceUnavailable)
+}
+
 func main() {
+	atomic.StoreInt32(&healthy, 0)
+	log.Println("Starting caturday...")
+
 	hostname, _ := os.Hostname()
 	ifaces, _ := net.Interfaces()
 	addrs := ips()
 	hostData = HostData{Hostname: hostname, Count: 0, Interfaces: ifaces, Addresses: addrs}
+
 	http.HandleFunc("/", handler)
-	http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/healthz", healthHandler)
+
+	atomic.StoreInt32(&healthy, 1)
+	log.Println("Initializing the HTTP server")
+	if err := http.ListenAndServe(":8080", nil); err != http.ErrServerClosed {
+		atomic.StoreInt32(&healthy, 0)
+		log.Printf("Error while starting caturday: %v\n", err)
+	}
+
+	atomic.StoreInt32(&healthy, 0)
+	log.Println("caturday has shut down")
 }
