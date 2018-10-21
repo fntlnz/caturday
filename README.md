@@ -17,6 +17,23 @@ or if your ingress is not `nginx` or you don'w want to automatically get certifi
 kubectl apply -f https://raw.githubusercontent.com/fntlnz/caturday/master/caturday.yml
 ```
 
+## Usage with Red Hat OpenShift
+
+First, create a new OpenShift project:
+
+```
+oc new-project caturday
+```
+
+I provide an [example set of OpenShift definitions](caturday-openshift) that
+uses [`openshift-acme`](https://github.com/tnozicka/openshift-acme) to
+automatically secure the route for the application. Edit it as needed, then
+run:
+
+```
+oc create -f caturday-openshift.yml
+```
+
 ## Usage with Docker
 
 ```
