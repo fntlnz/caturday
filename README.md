@@ -4,6 +4,17 @@ A lightweight web application I use to test container networking
 
 ![caturday.png](caturday.png)
 
+
+### Endpoints
+
+| endpoint | method | purpose                                                                                                                           |
+|----------|--------|-----------------------------------------------------------------------------------------------------------------------------------|
+| /*       | GET    | giving you all cats HTML  and network info                                                                                        |
+| /metrics | GET    | basic prometheus metrics endpoint                                                                                                 |
+| /raw     | GET    | giving you a cats plain text and network info                                                                                     |
+| /health  | GET    | health handler for your liveness or readiness, not normally the same endpoint but hey cats are simple and cute :heart_eyes_cat :  |
+
+
 ## Usage with Kubernetes
 
 As you can see in the following example, I provide a simple example using

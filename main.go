@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type HostData struct {
@@ -25,12 +27,58 @@ type TemplateData struct {
 	R RequestData
 }
 
+const houserawcat = `
+YES! It's Caturday!
+             *     ,MMM8&&&.            *
+                  MMMM88&&&&&    .
+                 MMMM88&&&&&&&
+     *           MMM88&&&&&&&&
+                 MMM88&&&&&&&&
+                 'MMM88&&&&&&'
+                   'MMM8&&&'      *
+          |\___/|
+          )     (             .              '
+         =\     /=
+           )===(       *
+          /     \
+          |     |
+         /       \
+         \       /
+  _/\_/\_/\__  _/_/\_/\_/\_/\_/\_/\_/\_/\_/\_
+  |  |  |  |( (  |  |  |  |  |  |  |  |  |  |
+  |  |  |  | ) ) |  |  |  |  |  |  |  |  |  |
+  |  |  |  |(_(  |  |  |  |  |  |  |  |  |  |
+  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+
+Hostname: {{ .H.Hostname }}
+Count: {{ .H.Count }}
+Remote Addr: {{ .R.RemoteAddr }}
+
+Interfaces
+-----------
+{{ range $i := .H.Interfaces }}
+{{ $i.Name }}  {{ $i.HardwareAddr }} {{ $i.MTU }} {{ $i.Index }}
+{{ end }}
+
+
+Addresses
+----------
+{{ range $addr, $if := .H.Addresses }}
+{{ $if }} {{ $addr }}
+{{ end }}
+
+
+Meeeeow :3 - you can use this in your tests too, see: https://github.com/fntlnz/caturday
+`
+
 const housecat = `
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <title>Yes, It's Caturday</title>
+		<link href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAACoopsAAP9ZAG5JIQD/AMMAEQD/AH11awAKBgEA/1EAAABz/wDmkdkA/O7eAAD/9wD/xPYAkcXrAAAAAAAAAAAAoiIiIiIiIioiIiIioiIiIiIqIiIiIiIiIiIiIiIiKiKiIiKiIiIiIjMzMzMAIAIid3d3d9zFVVIRERcRzMlVkru7ERvMxVVSiIiIiMzGzGJERERE3MzNIiIiIiIiIiIioiKiKiIiIqIiIiIiIiIiIiIiIiIiKiIiKiIioiIiIiIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" rel="icon" type="image/x-icon" />
   </head>
   <body>
 		<h2>Yes, It's Caturday!</h2>
@@ -123,6 +171,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, TemplateData{H: hostData, R: reqData})
 }
 
+func rawHandler(w http.ResponseWriter, r *http.Request) {
+	hostData.Count = hostData.Count + 1
+
+	reqData := RequestData{RemoteAddr: r.RemoteAddr}
+	t := template.New("kittensraw")
+	t, _ = t.Parse(houserawcat)
+	t.Execute(w, TemplateData{H: hostData, R: reqData})
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	if atomic.LoadInt32(&healthy) == 1 {
 		w.WriteHeader(http.StatusNoContent)
@@ -141,7 +198,9 @@ func main() {
 	hostData = HostData{Hostname: hostname, Count: 0, Interfaces: ifaces, Addresses: addrs}
 
 	http.HandleFunc("/", handler)
+	http.HandleFunc("/raw", rawHandler)
 	http.HandleFunc("/healthz", healthHandler)
+	http.Handle("/metrics", promhttp.Handler())
 
 	atomic.StoreInt32(&healthy, 1)
 	log.Println("Initializing the HTTP server")

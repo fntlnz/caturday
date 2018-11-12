@@ -4,7 +4,7 @@ ADD . /go/src/github.com/fntlnz/caturday
 
 WORKDIR /go/src/github.com/fntlnz/caturday
 
-RUN go build -a -tags netgo -ldflags '-w' .
+RUN GO111MODULE=on go build -a -tags netgo -ldflags '-w' .
 
 FROM scratch
 
