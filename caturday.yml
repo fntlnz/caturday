@@ -47,7 +47,7 @@ metadata:
   name: caturday
   namespace: caturday
   labels:
-    app: catrday
+    app: caturday
 spec:
   replicas: 3
   selector:
@@ -61,6 +61,14 @@ spec:
       containers:
       - name: caturday
         image: docker.io/fntlnz/caturday:latest
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
         resources:
           limits:
             cpu: 0.1
