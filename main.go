@@ -169,6 +169,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	t := template.New("kittens")
 	t, _ = t.Parse(housecat)
 	t.Execute(w, TemplateData{H: hostData, R: reqData})
+	log.Printf("received request: %s - counter: %d", r.RemoteAddr, hostData.Count)
 }
 
 func rawHandler(w http.ResponseWriter, r *http.Request) {
@@ -178,6 +179,7 @@ func rawHandler(w http.ResponseWriter, r *http.Request) {
 	t := template.New("kittensraw")
 	t, _ = t.Parse(houserawcat)
 	t.Execute(w, TemplateData{H: hostData, R: reqData})
+	log.Printf("received request: %s - counter: %d", r.RemoteAddr, hostData.Count)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
