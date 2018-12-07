@@ -8,12 +8,14 @@ import (
 	"os"
 	"sync/atomic"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/influxdata/platform/kit/prom"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 type HostData struct {
 	Hostname   string
-	Count      int64
+	Counter    prometheus.Counter
 	Interfaces []net.Interface
 	Addresses  map[string]string
 }
@@ -23,8 +25,9 @@ type RequestData struct {
 }
 
 type TemplateData struct {
-	H HostData
-	R RequestData
+	H     HostData
+	R     RequestData
+	Count int
 }
 
 const houserawcat = `
@@ -52,7 +55,7 @@ YES! It's Caturday!
   |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 
 Hostname: {{ .H.Hostname }}
-Count: {{ .H.Count }}
+Count: {{ .Count }}
 Remote Addr: {{ .R.RemoteAddr }}
 
 Interfaces
@@ -92,7 +95,7 @@ const housecat = `
       </tr>
       <tr>
         <td><strong>Count renders</strong></td>
-        <td>{{ .H.Count }}</td>
+        <td>{{ .Count }}</td>
       </tr>
       <tr>
         <td><strong>Remote</strong></td>
@@ -163,46 +166,63 @@ func ips() map[string]string {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	atomic.AddInt64(&hostData.Count, 1)
-
+	hostData.Counter.Inc()
+	cv := counterValue(hostData.Counter)
 	reqData := RequestData{RemoteAddr: r.RemoteAddr}
 	t := template.New("kittens")
 	t, _ = t.Parse(housecat)
-	t.Execute(w, TemplateData{H: hostData, R: reqData})
-	log.Printf("received request: %s - counter: %d", r.RemoteAddr, hostData.Count)
+	t.Execute(w, TemplateData{H: hostData, R: reqData, Count: cv})
+	log.Printf("received request: %s - counter: %d", r.RemoteAddr, cv)
 }
 
 func rawHandler(w http.ResponseWriter, r *http.Request) {
-	hostData.Count = hostData.Count + 1
-
+	hostData.Counter.Inc()
+	cv := counterValue(hostData.Counter)
 	reqData := RequestData{RemoteAddr: r.RemoteAddr}
 	t := template.New("kittensraw")
 	t, _ = t.Parse(houserawcat)
-	t.Execute(w, TemplateData{H: hostData, R: reqData})
-	log.Printf("received request: %s - counter: %d", r.RemoteAddr, hostData.Count)
+	t.Execute(w, TemplateData{H: hostData, R: reqData, Count: cv})
+	log.Printf("received request: %s - counter: %d", r.RemoteAddr, cv)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	if atomic.LoadInt32(&healthy) == 1 {
-		w.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 		return
 	}
 	w.WriteHeader(http.StatusServiceUnavailable)
+	w.Write([]byte("KO"))
+}
+
+func counterValue(counter prometheus.Counter) int {
+	dm := &dto.Metric{}
+	counter.Write(dm)
+	return int(dm.Counter.GetValue())
 }
 
 func main() {
-	atomic.StoreInt32(&healthy, 0)
+	reg := prom.NewRegistry()
+	reg.MustRegister(prometheus.NewGoCollector())
+	counter := prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "caturday",
+		Name:      "requests_count",
+		Help:      "Number of requests going to a caturday instance",
+	})
+	reg.MustRegister(counter)
+
 	log.Println("Starting caturday...")
 
 	hostname, _ := os.Hostname()
 	ifaces, _ := net.Interfaces()
 	addrs := ips()
-	hostData = HostData{Hostname: hostname, Count: 0, Interfaces: ifaces, Addresses: addrs}
+	hostData = HostData{Hostname: hostname, Counter: counter, Interfaces: ifaces, Addresses: addrs}
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/raw", rawHandler)
 	http.HandleFunc("/healthz", healthHandler)
-	http.Handle("/metrics", promhttp.Handler())
+	http.HandleFunc("/health", healthHandler)
+	http.Handle("/metrics", reg.HTTPHandler())
 
 	atomic.StoreInt32(&healthy, 1)
 	log.Println("Initializing the HTTP server")
